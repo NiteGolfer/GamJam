@@ -318,12 +318,9 @@ class Car(drawnObject):
             self.y -= math.sin(self.direction)
 
     def draw(self):
-<<<<<<< HEAD
         screen.blit(pg.transform.rotate(carimg, -(math.degrees(self.direction) - 180)), (self.x, self.y))
-=======
         #  pygame.draw.rect(screen, (255, 255, 255), (self.x, self.y, self.width, self.height))
         pass
->>>>>>> 54074918d8d9b588cf9e1a2d9e180e8693873fe2
 
     def playerIn(self):
         self.hasPlayer = True
@@ -331,8 +328,8 @@ class Car(drawnObject):
     def playerOut(self):
         self.hasPlayer = False
 
-<<<<<<< HEAD
-car = Car((screenwidth/2), (screenheight/2))
+
+
 
 class Hitbox:
 
@@ -485,16 +482,15 @@ class Map:
 
     def setZone(self):
         if self.zonesx[(self.mapwidth/2)-1][(self.mapheight/2)-1].zonehitbox.hit():
+            pass
 
-=======
->>>>>>> 54074918d8d9b588cf9e1a2d9e180e8693873fe2
 
 tile_size = int(height / 15)
 map = TileMap(1) #  (width / tile_size * 2)
 car = Car((width/2), (height/2))
 player = MainPlayer()
 
-<<<<<<< HEAD
+while run:
     screen.fill((255, 255, 255))
 
     pressedw = False
@@ -502,11 +498,6 @@ player = MainPlayer()
     presseds = False
     pressedd = False
     posneg = 0
-
-=======
-while run:
-    screen.fill((0, 0, 0))
->>>>>>> 54074918d8d9b588cf9e1a2d9e180e8693873fe2
     # getting input
     for event in pygame.event.get():
         if event.type == pg.QUIT:
@@ -540,8 +531,6 @@ while run:
         presseds = True
     if keycheck[pg.K_d]:
         pressedd = True
-
-<<<<<<< HEAD
     if pressedw and not presseds:
         posneg = 1
     if not pressedw and presseds:
@@ -554,10 +543,6 @@ while run:
         cw = True
     else:
         cw = False
-=======
-    pg.display.update()
-
->>>>>>> 54074918d8d9b588cf9e1a2d9e180e8693873fe2
 
     car.move(posneg, cw, ccw)
     car.draw()
