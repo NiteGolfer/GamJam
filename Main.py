@@ -10,12 +10,12 @@ pg = pygame
 pg.init()
 pg.display.init()
 pg.mixer.init()
-channels = [pg.mixer.Channel(0), pg.mixer.Channel(1)]
+channels = [pg.mixer.Channel(0), pg.mixer.Channel(1), pg.mixer.Channel(2)]
 clock = pygame.time.Clock()
 song = pg.mixer.Sound('music.wav')
 pew = pg.mixer.Sound('pew.mp3.wav')
+vroom = pg.mixer.Sound('car_sound.wav')
 channels[0].set_volume(0.01)
-channels[1].set_volume(1)
 
 screenwidth = 1920
 screenheight = 1080
@@ -45,107 +45,6 @@ class drawnObject:
 
     def draw(self):
         pass
-
-
-class Tile(drawnObject):
-
-    def __init__(self, x, y, tile_size):
-        super().__init__(layer=0)
-        self.cords = [x, y]
-        self.size = tile_size
-        self.type = None
-        self.chance = 15
-        self.item = self.pickItem()
-
-    def pickItem(self):
-        return None
-
-    def draw(self):
-        pass
-
-    def use(self):
-        return "N"
-
-
-class Road(Tile):
-
-    def __init__(self, x, y, direction=0):
-        super().__init__(x, y, tile_size)
-        self.direction = direction
-        self.color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-
-    def draw(self):
-        return 
-        pygame.draw.rect(screen, self.color,
-                         (self.cords[0] - self.size / 2, self.cords[1]  - self.size / 2, self.size, self.size))
-        pygame.draw.rect(screen, (0, 0, 0),
-                         (self.cords[0] - self.size / 2, self.cords[1] - self.size / 2, self.size, self.size), 2)
-
-    def use(self):
-        self.color = (0, 0, 0)
-        return "N"
-
-    def pickItem(self):
-        return None
-        for item in items:
-            if random.randint(0, 100) < self.chance:
-                return item()
-
-
-
-class TileMap:
-
-    def __init__(self, size):
-        self.tiles = []
-        self.tile_size = tile_size
-        r = int(size/2)
-        self.tiles.append([Road(width / 2, height / 2, tile_size)])
-        self.offscreen = 50
-        while self.tiles[0][0].cords[0] >= -tile_size * self.offscreen / 2:
-            self.build_left(e=True)
-        while self.tiles[-1][-1].cords[0] <= width + tile_size* self.offscreen / 2:
-            self.build_right(e=True)
-        while self.tiles[0][0].cords[1] >= -tile_size * self.offscreen / 2:
-            self.build_up(e=True)
-        while self.tiles[-1][-1].cords[1] <= height + tile_size * self.offscreen / 2:
-            self.build_down(e=True)
-
-    def build_left(self, e=False):
-        for index, row in  enumerate(self.tiles):
-            row.insert(0, Road(row[0].cords[0] - self.tile_size, row[0].cords[1]))
-            if not e:
-                del row[-1]
-
-    def build_right(self, e=False):
-        for index, row in  enumerate(self.tiles):
-            row.insert(len(row), Road(row[-1].cords[0] + self.tile_size, row[-1].cords[1]))
-            if not e:
-                del row[0]
-
-    def build_up(self, e=False):
-        new_row = []
-        for tile in self.tiles[0]:
-            new_row.append(Road(tile.cords[0], tile.cords[1] - self.tile_size))
-        if not e:
-            del self.tiles[-1]
-        self.tiles.insert(0, new_row)
-
-    def build_down(self, e=False):
-        new_row = []
-        for tile in self.tiles[-1]:
-            new_row.append(Road(tile.cords[0], tile.cords[1] + self.tile_size))
-        if not e:
-            del self.tiles[0]
-        self.tiles.insert(len(self.tiles), new_row)
-
-    def print(self):
-        string = ""
-        for row in self.tiles:
-            new_row = ""
-            for tile in row:
-                new_row += str(tile.cords[0]) + ":" + str(tile.cords[1]) + " "
-            string += new_row + "\n"
-        print(string)
 
 
 class Player(drawnObject):
@@ -181,6 +80,8 @@ class Player(drawnObject):
 
     def draw(self):
         if self.inCar:
+            if not channels[2].get_busy():
+                channels[2].play(vroom)
             return
         #  r = (self.cords[0] - self.size / 2, self.cords[1] - self.size / 2, self.size, self.size)
         r = (width / 2 - self.size / 2, height / 2 - self.size / 2, self.size, self.size)
@@ -537,8 +438,6 @@ class Map:
                 screen.blit(tileimg, (self.cords[0], self.cords[1]))
 
 
-
-tile_size = int(height / 15)
 car = Car((width/2), (height/2))
 player = MainPlayer()
 
@@ -577,6 +476,7 @@ while run:
     if pg.mouse.get_pressed()[0]:
         fireanimchange = True
     player.move()
+    player.shoot()
     #getting keyed input
     keycheck = pg.key.get_pressed()
 
