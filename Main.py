@@ -487,7 +487,6 @@ class Map:
         if self.sizew > screenwidth:
             self.sizew += zonewidth
             self.mapwidth = self.sizew // zonewidth
-        print(self.mapwidth)
         self.sizeh = 0
         while self.sizeh < screenheight:
             self.sizeh += zoneheight
@@ -501,13 +500,26 @@ class Map:
         self.zonediffx = self.startingpointx - (self.mapwidth / 2)
         self.zonediffy = self.startingpointy - (self.mapheight / 2)
         for zone in range(self.mapwidth):
+            self.zonesx.append([])
             for zones in range(self.mapheight):
-                self.zonesy.append(Zone(self.startingpointx + self.zonediffx, self.startingpointy + self.zonediffy))
+                self.zonesx[zone].append(Zone(self.startingpointx + self.zonediffx, self.startingpointy + self.zonediffy))
                 self.zonediffy += zoneheight
-            self.zonesx.append(self.zonesy)
             self.zonediffy = 0
-            self.zonesy.clear()
             self.zonediffx += zonewidth
+
+    #def setZone(self):
+    #    self.zonesx[(self.mapwidth / 2) - 1][(self.mapheight / 2) - 1].zonehitbox.changeActive(player.cors[0],
+    #                                                                                           player.cords[1])
+    #    if not self.zonesx[(self.mapwidth / 2) - 1][(self.mapheight / 2) - 1].zonehitbox.hit():
+    #        for zones in zonesx:
+    #            for zone in zones:
+    #                if zone.zonehitbox.hit():
+
+    def draw(self):
+        for zones in self.zonesx:
+            for zone in zones:
+                print('yeet')
+                screen.blit(tileimg, (zone.cords[0], zone.cords[1]))
 
     #def setZone(self):
     #    self.zonesx[(self.mapwidth / 2) - 1][(self.mapheight / 2) - 1].zonehitbox.changeActive(player.cors[0],
