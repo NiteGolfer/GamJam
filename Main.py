@@ -149,7 +149,7 @@ class Player(drawnObject):
         self.index = 0
         self.max_health = 100
         self.health = self.max_health
-        self.skin = pg.transform.smoothscale(pg.image.load('Player1-1.png'), (64, 64))
+        self.skin = pg.transform.scale(pg.image.load('Player1.png'), (64, 64))
         self.delta = [0, 0]
         self.size = 64
         self.dead = False
@@ -422,55 +422,67 @@ class Hitbox:
 zonewidth = 800
 zoneheight = 800
 
-class Zone:
+class Zone(drawnObject):
     def __init__(self, x, y):
+        super().__init__(cords=[x,y])
         self.x = x
         self.y = y
         self.img = None
         self.width = zonewidth
         self.height = zoneheight
-        self.recbin = Hitbox(0, 0, 64, 64, (89*4) + x, (59*4) + y, (12*4), (8*4), player)
-        self.garbin = Hitbox(0, 0, 64, 64, (89) + x, (75*4) + y, (13*4), (10*4), player)
-        self.mailbox = Hitbox(0, 0, 64, 64, (85) + x, (5*4) + y, (12*4), (8*4), player)
-        self.house = Hitbox(0, 0, 64, 64, (105) + x, (8*4) + y, (87*4), (91*4), player)
-        self.door = Hitbox(0, 0, 64, 64, (103) + x, (16*4) + y, (18*4), (2*4), player)
-        self.zonehitbox = Hitbox(0,0, 64, 64, x, y, zonewidth, zoneheight, player)
+        self.recbin = Hitbox(0, 0, 64, 64, (89 * 4) + x, (59 * 4) + y, (12 * 4), (8 * 4), player)
+        self.garbin = Hitbox(0, 0, 64, 64, (89) + x, (75 * 4) + y, (13 * 4), (10 * 4), player)
+        self.mailbox = Hitbox(0, 0, 64, 64, (85) + x, (5 * 4) + y, (12 * 4), (8 * 4), player)
+        self.house = Hitbox(0, 0, 64, 64, (105) + x, (8 * 4) + y, (87 * 4), (91 * 4), player)
+        self.door = Hitbox(0, 0, 64, 64, (103) + x, (16 * 4) + y, (18 * 4), (2 * 4), player)
+        self.zonehitbox = Hitbox(0, 0, 64, 64, x, y, zonewidth, zoneheight, player)
         self.recbincont = None
         self.garbincont = None
         self.mailboxcont = None
 
     def getMailbox(self):
         return self.mailboxcont
+
     def getRecbin(self):
         return self.recbincont
+
     def getGarbin(self):
         return self.garbincont
+
+    def setHitboxes(self):
+        self.recbin.changeActive(player.cords[0], player.cords[1])
+        self.garbin.changeActive(player.cords[0], player.cords[1])
+        self.mailbox.changeActive(player.cords[0], player.cords[1])
+        self.house.changeActive(player.cords[0], player.cords[1])
+        self.zonehitbox.changeActive(player.cords[0], player.cords[1])
 
     def setContents(self, recbin, garbin, mailbox):
         self.recbincont = recbin
         self.garbincont = garbin
         self.mailboxcont = mailbox
 
+
 class Map:
     def __init__(self, screenwidth, screenheight):
         self.sizew = 0
         while self.sizew < screenwidth:
             self.sizew += zonewidth
-            if self.sizew > screenwidth:
-                self.sizew += zonewidth
-                self.mapwidth = self.sizew/zonewidth
+        if self.sizew > screenwidth:
+            self.sizew += zonewidth
+            self.mapwidth = self.sizew // zonewidth
+        print(self.mapwidth)
         self.sizeh = 0
         while self.sizeh < screenheight:
             self.sizeh += zoneheight
             if self.sizeh > screenheight:
                 self.sizeh += zoneheight
-                self.mapheight = self.sizeh/zoneheight
+                self.mapheight = self.sizeh // zoneheight
         self.startingpointx = (screenwidth - zonewidth) / 2
         self.startingpointy = (screenheight - zoneheight) / 2
         self.zonesx = []
         self.zonesy = []
-        self.zonediffx = self.startingpointx - (self.mapwidth/2)
-        self.zonediffy = self.startingpointy - (self.mapheight/2)
+        self.zonediffx = self.startingpointx - (self.mapwidth / 2)
+        self.zonediffy = self.startingpointy - (self.mapheight / 2)
         for zone in range(self.mapwidth):
             for zones in range(self.mapheight):
                 self.zonesy.append(Zone(self.startingpointx + self.zonediffx, self.startingpointy + self.zonediffy))
@@ -480,9 +492,20 @@ class Map:
             self.zonesy.clear()
             self.zonediffx += zonewidth
 
-    def setZone(self):
-        if self.zonesx[(self.mapwidth/2)-1][(self.mapheight/2)-1].zonehitbox.hit():
-            pass
+    #def setZone(self):
+    #    self.zonesx[(self.mapwidth / 2) - 1][(self.mapheight / 2) - 1].zonehitbox.changeActive(player.cors[0],
+    #                                                                                           player.cords[1])
+    #    if not self.zonesx[(self.mapwidth / 2) - 1][(self.mapheight / 2) - 1].zonehitbox.hit():
+    #        for zones in zonesx:
+    #            for zone in zones:
+    #                if zone.zonehitbox.hit():
+
+    def draw(self):
+        for zones in self.zonesx:
+            for zone in zones:
+                print('yeet')
+                screen.blit(tileimg, (self.cords[0], self.cords[1]))
+
 
 
 tile_size = int(height / 15)
