@@ -256,7 +256,7 @@ class MainPlayer(Player):
             self.shoot()
 
     def shoot(self):
-        if time.time() - self.lastShot < self.delay:
+        if time.time() - self.lastShot < self.delay or pg.mouse.get_pressed()[0] != 1:
             return
         self.lastShot = time.time()
         xy = pg.mouse.get_pos()
@@ -526,7 +526,6 @@ class Map:
 
 
 tile_size = int(height / 15)
-# map = TileMap(1) #  (width / tile_size * 2)
 car = Car((width/2), (height/2))
 player = MainPlayer()
 
