@@ -469,7 +469,6 @@ class Map:
         if self.sizew > screenwidth:
             self.sizew += zonewidth
             self.mapwidth = self.sizew // zonewidth
-        print(self.mapwidth)
         self.sizeh = 0
         while self.sizeh < screenheight:
             self.sizeh += zoneheight
@@ -483,12 +482,11 @@ class Map:
         self.zonediffx = self.startingpointx - (self.mapwidth / 2)
         self.zonediffy = self.startingpointy - (self.mapheight / 2)
         for zone in range(self.mapwidth):
+            self.zonesx.append([])
             for zones in range(self.mapheight):
-                self.zonesy.append(Zone(self.startingpointx + self.zonediffx, self.startingpointy + self.zonediffy))
+                self.zonesx[zone].append(Zone(self.startingpointx + self.zonediffx, self.startingpointy + self.zonediffy))
                 self.zonediffy += zoneheight
-            self.zonesx.append(self.zonesy)
             self.zonediffy = 0
-            self.zonesy.clear()
             self.zonediffx += zonewidth
 
     #def setZone(self):
@@ -503,7 +501,7 @@ class Map:
         for zones in self.zonesx:
             for zone in zones:
                 print('yeet')
-                screen.blit(tileimg, (self.cords[0], self.cords[1]))
+                screen.blit(tileimg, (zone.cords[0], zone.cords[1]))
 
 tile_size = int(height / 15)
 map = TileMap(1)  # (width / tile_size * 2)
@@ -515,6 +513,8 @@ ubermap = Map(screenwidth, screenheight)
 
 while run:
     screen.fill((255, 255, 255))
+    ubermap.draw()
+
 
     pressedw = False
     presseda = False
@@ -567,7 +567,6 @@ while run:
     else:
         cw = False
 
-    ubermap.draw()
     car.move(posneg, cw, ccw)
     car.draw()
 
