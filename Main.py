@@ -399,14 +399,14 @@ class Map:
         self.startingpointy = (screenheight - zoneheight) / 2
         self.zonesx = []
         self.zonesy = []
-        self.zonediffx = self.startingpointx - (self.mapwidth / 2)
-        self.zonediffy = self.startingpointy - (self.mapheight / 2)
+        self.zonediffx = self.startingpointx - (self.sizew / 2)
+        self.zonediffy = self.startingpointy - (self.sizeh / 2)
         for zone in range(self.mapwidth):
             self.zonesx.append([])
             for zones in range(self.mapheight):
                 self.zonesx[zone].append(Zone(self.startingpointx + self.zonediffx, self.startingpointy + self.zonediffy))
                 self.zonediffy += zoneheight
-            self.zonediffy = 0
+            self.zonediffy = self.startingpointy - (self.sizeh / 2)
             self.zonediffx += zonewidth
 
     #def setZone(self):
@@ -420,27 +420,12 @@ class Map:
     def draw(self):
         for zones in self.zonesx:
             for zone in zones:
-                print('yeet')
                 screen.blit(tileimg, (zone.cords[0], zone.cords[1]))
-
-    #def setZone(self):
-    #    self.zonesx[(self.mapwidth / 2) - 1][(self.mapheight / 2) - 1].zonehitbox.changeActive(player.cors[0],
-    #                                                                                           player.cords[1])
-    #    if not self.zonesx[(self.mapwidth / 2) - 1][(self.mapheight / 2) - 1].zonehitbox.hit():
-    #        for zones in zonesx:
-    #            for zone in zones:
-    #                if zone.zonehitbox.hit():
-
-    def draw(self):
-        for zones in self.zonesx:
-            for zone in zones:
-                print('yeet')
-                screen.blit(tileimg, (self.cords[0], self.cords[1]))
 
 
 car = Car((width/2), (height/2))
 player = MainPlayer()
-
+ubermap = Map(screenwidth, screenheight)
 
 def drawGUI():
     pygame.draw.rect(screen, (0, 0, 0), (width / 10, height / 10 * 9, width / 10 * 8, height / 20))
@@ -451,6 +436,7 @@ while run:
     if not channels[0].get_busy():
         channels[0].play(song)
     screen.fill((255, 255, 255))
+    ubermap.draw()
 
     pressedw = False
     presseda = False
