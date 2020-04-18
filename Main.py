@@ -23,6 +23,7 @@ screenheight = 1080
 screen = pg.display.set_mode((screenwidth, screenheight))
 
 carimg = pygame.transform.scale(pg.image.load("Car.png"), (128, 64))
+tileimg= pygame.transform.scale(pg.image.load("BG.png"), (800, 800))
 
 run = True
 inputlatch = False
