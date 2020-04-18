@@ -9,6 +9,13 @@ pg = pygame
 
 pg.init()
 pg.display.init()
+pg.mixer.init()
+channels = [pg.mixer.Channel(0), pg.mixer.Channel(1)]
+clock = pygame.time.Clock()
+song = pg.mixer.Sound('music.wav')
+pew = pg.mixer.Sound('pew.mp3.wav')
+channels[0].set_volume(0.01)
+channels[1].set_volume(1)
 
 screenwidth = 1920
 screenheight = 1080
@@ -145,17 +152,18 @@ class Player(drawnObject):
     def __init__(self, cords):
         super().__init__()
         self.cords = cords
-        self.speed = 20
+        self.speed = 1.5
         self.index = 0
         self.max_health = 100
         self.health = self.max_health
-        self.skin = pg.transform.smoothscale(pg.image.load('Player1-1.png'), (64, 64))
+        self.skin = pg.transform.scale(pg.image.load('Player1.png'), (64, 64))
         self.delta = [0, 0]
         self.size = 64
         self.dead = False
         self.bullets = []
         self.angle = 0
         self.find_angle()
+        self.inCar = False
 
     def find_angle(self):
         pos = pg.mouse.get_pos()
@@ -171,6 +179,9 @@ class Player(drawnObject):
             self.dead = True
 
     def draw(self):
+        if self.inCar:
+            return
+        #  r = (self.cords[0] - self.size / 2, self.cords[1] - self.size / 2, self.size, self.size)
         r = (width / 2 - self.size / 2, height / 2 - self.size / 2, self.size, self.size)
         self.find_angle()
         screen.blit(pygame.transform.rotozoom(self.skin, self.angle, 1), r)
@@ -180,7 +191,7 @@ class MainPlayer(Player):
 
     def __init__(self):
         super().__init__(cords=[width / 2, height / 2])
-        self.delay = 0.2
+        self.delay = pew.get_length()
         self.lastShot = -self.delay
 
     def move(self, delta=[0, 0]):
@@ -189,30 +200,37 @@ class MainPlayer(Player):
             self.delta = delta
         for key in keys:
             self.handleKeyDown(key)
-        tiles = map.tiles
-        # Handle X cords
-        cords = tiles[0][0].cords
-        if cords[0] - self.delta[0] > -tile_size * map.offscreen / 2:
-            map.build_left()
-            dist[0] -= 1
-        cords = tiles[-1][-1].cords
-        if cords[0] - self.delta[0] < width + tile_size * map.offscreen / 2:
-            map.build_right()
-            dist[0] += 1
+        try:
+            tiles = map.tiles
+            # Handle X cords
+            cords = tiles[0][0].cords
+            if cords[0] - self.delta[0] > -tile_size * map.offscreen / 2:
+                map.build_left()
+                dist[0] -= 1
+            cords = tiles[-1][-1].cords
+            if cords[0] - self.delta[0] < width + tile_size * map.offscreen / 2:
+                map.build_right()
+                dist[0] += 1
 
-        # Handle Y cords
-        cords = tiles[0][0].cords
-        if cords[1] - self.delta[1] > -tile_size * map.offscreen / 2:
-            map.build_up()
-            dist[1] -= 1
-        cords = tiles[-1][-1].cords
-        if cords[1] - self.delta[1] < height + tile_size * map.offscreen / 2:
-            map.build_down()
-            dist[1] += 1
-
+            # Handle Y cords
+            cords = tiles[0][0].cords
+            if cords[1] - self.delta[1] > -tile_size * map.offscreen / 2:
+                map.build_up()
+                dist[1] -= 1
+            cords = tiles[-1][-1].cords
+            if cords[1] - self.delta[1] < height + tile_size * map.offscreen / 2:
+                map.build_down()
+                dist[1] += 1
+        except AttributeError:
+            pass
         global drawn_objects
         for object in drawn_objects:
             object.cords = [object.cords[0] - self.delta[0], object.cords[1] - self.delta[1]]
+            try:
+                object.x -= self.delta[0]
+                object.y -= self.delta[1]
+            except AttributeError:
+                pass
 
         '''
         cords = tiles[0][0].cords
@@ -246,6 +264,8 @@ class MainPlayer(Player):
         s = math.sin(math.radians(a))
         c = math.cos(math.radians(a))
         self.bullets.append(Bullet([width / 2 + 2 * s, height / 2 - 7 * c], xy))
+        if not channels[1].get_busy():
+            channels[1].play(pew)
 
     def useTile(self):
         tiles = map.tiles
@@ -259,9 +279,6 @@ class MainPlayer(Player):
             self.health += eval(output[:-1])
             if self.health > self.max_health:
                  self.health = 100
-
-    def drawGUI(self):
-        pygame.draw.rect((width / 10, height / 10 * 9, width / 10 * 8, height / 5))
 
 
 class Bullet(drawnObject):
@@ -277,7 +294,7 @@ class Bullet(drawnObject):
 
     def draw(self):
         self.cords = [self.cords[0] + self.delta[0], self.cords[1] + self.delta[1]]
-        pygame.draw.circle(screen, (255, 255, 255), [int(self.cords[0]), int(self.cords[1])], self.size)
+        pygame.draw.circle(screen, (0, 0, 0), [int(self.cords[0]), int(self.cords[1])], self.size)
 
 
 class Car(drawnObject):
@@ -486,11 +503,19 @@ class Map:
 
 
 tile_size = int(height / 15)
-map = TileMap(1) #  (width / tile_size * 2)
+# map = TileMap(1) #  (width / tile_size * 2)
 car = Car((width/2), (height/2))
 player = MainPlayer()
 
+
+def drawGUI():
+    pygame.draw.rect(screen, (0, 0, 0), (width / 10, height / 10 * 9, width / 10 * 8, height / 20))
+    pygame.draw.rect(screen, (200, 75, 75),
+                     (width / 10, height / 10 * 9, width / 10 * 8 * player.health / player.max_health, height / 20))
+
 while run:
+    if not channels[0].get_busy():
+        channels[0].play(song)
     screen.fill((255, 255, 255))
 
     pressedw = False
@@ -545,6 +570,6 @@ while run:
         cw = False
 
     car.move(posneg, cw, ccw)
-    car.draw()
-
+    drawGUI()
     pg.display.update()
+    clock.tick(60)
