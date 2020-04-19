@@ -16,7 +16,7 @@ clock = pygame.time.Clock()
 song = pg.mixer.Sound('music.wav')
 pew = pg.mixer.Sound('pew.mp3.wav')
 vroom = pg.mixer.Sound('car_sound.wav')
-channels[0].set_volume(0.01)
+channels[0].set_volume(1)
 
 screenwidth = 1920
 screenheight = 1080
