@@ -16,7 +16,7 @@ clock = pygame.time.Clock()
 song = pg.mixer.Sound('music.wav')
 pew = pg.mixer.Sound('pew.mp3.wav')
 vroom = pg.mixer.Sound('car_sound.wav')
-channels[0].set_volume(0.01)
+channels[0].set_volume(0.001)
 
 screenwidth = 1920
 screenheight = 1080
@@ -29,6 +29,7 @@ tileimg= pygame.transform.scale(pg.image.load("BG.png"), (800, 800))
 run = True
 inputlatch = False
 drawn_objects = []
+zombies = []
 dist = [0, 0]
 height = 1080
 width = 1920
@@ -55,45 +56,62 @@ class Player(drawnObject):
         self.cords = cords
         self.speed = 1.5
         self.index = 0
-        self.max_health = 100
+        self.max_health = 1
         self.health = self.max_health
         self.skin = pg.transform.scale(pg.image.load('Player1.png'), (64, 64))
         self.delta = [0, 0]
         self.size = 64
         self.dead = False
         self.bullets = []
-        self.angle = 0
-        self.find_angle()
-        self.inCar = False
+        self.angle = self.find_angle()
 
-    def find_angle(self):
-        pos = pg.mouse.get_pos()
-        x = pos[0] - width / 2
-        y = pos[1] - height / 2
+    def find_angle(self, other=None):
+        if not other:
+            pos = pg.mouse.get_pos()
+            x = pos[0] - width / 2
+            y = pos[1] - height / 2
+        else:
+            pos = other
+            x = self.cords[0] - pos[0]
+            y = self.cords[1] - pos[1]
         angle = math.atan2(y, x)
         angle = (180 / math.pi) * (-angle) - 90
-        self.angle = angle
+        return angle
 
     def take_damage(self, damage):
         self.health -= damage
         if self.health < 0:
             self.dead = True
 
+
+class Zombie(Player):
+
+    def __init__(self):
+        super().__init__(cords=[0, 0])
+        self.delay = 2
+        self.lastHit = -self.delay
+        zombies.append(self)
+
+    def move(self):
+        dist = ((width / 2 - self.cords[0]) ** 2 + (height / 2 - self.cords[1]) ** 2) ** 0.5
+        Y = 90 - self.find_angle([width / 2, height / 2])
+        X = 90 - Y
+        self.angle = X
+        if dist > 200:
+            self.cords = [self.cords[0] - math.sin(X) * self.speed, self.cords[1] - math.sin(Y) * self.speed]
+
     def draw(self):
-        if self.inCar:
-            if not channels[2].get_busy():
-                channels[2].play(vroom)
-            return
-        #  r = (self.cords[0] - self.size / 2, self.cords[1] - self.size / 2, self.size, self.size)
-        r = (width / 2 - self.size / 2, height / 2 - self.size / 2, self.size, self.size)
-        self.find_angle()
-        screen.blit(pygame.transform.rotozoom(self.skin, self.angle, 1), r)
+        r = (self.cords[0] - self.size / 2, self.cords[1] - self.size / 2, self.size, self.size)
+        screen.blit(pygame.transform.rotozoom(self.skin, self.angle + 180, 1), r)
 
 
 class MainPlayer(Player):
 
     def __init__(self):
         super().__init__(cords=[width / 2, height / 2])
+        self.skin = pg.transform.scale(pg.image.load('Player1.png'), (64, 64))
+        self.max_health = 100
+        self.health = self.max_health
         self.delay = pew.get_length()
         self.lastShot = -self.delay
         self.reload_start = self.lastShot
@@ -103,6 +121,17 @@ class MainPlayer(Player):
         self.reload = 5
         self.ammo = self.max_ammo
         self.reloading = False
+        self.inCar = False
+
+    def draw(self):
+        if self.inCar:
+            if not channels[2].get_busy():
+                channels[2].play(vroom)
+            return
+        #  r = (self.cords[0] - self.size / 2, self.cords[1] - self.size / 2, self.size, self.size)
+        r = (width / 2 - self.size / 2, height / 2 - self.size / 2, self.size, self.size)
+        self.angle = self.find_angle()
+        screen.blit(pygame.transform.rotozoom(self.skin, self.angle, 1), r)
 
     def move(self, delta=[0, 0]):
         self.delta = [0, 0]
@@ -129,15 +158,12 @@ class MainPlayer(Player):
             self.delta[0] = -self.speed
         if key == 'd':
             self.delta[0] = self.speed
-        if key == ' ':
-            self.shoot()
         if key == 'r' and self.mag != self.mag_size:
             self.reload_start = time.time()
             self.reloading = True
 
     def shoot(self):
-        print(self.ammo)
-        if time.time() - self.lastShot < self.delay or pg.mouse.get_pressed()[0] != 1:
+        if time.time() - self.lastShot < self.delay:
             return
         if time.time() - self.reload_start >= self.delay and self.reloading:
             self.reloading = False
@@ -416,7 +442,9 @@ class Map:
 
 car = Car((width/2), (height/2))
 player = MainPlayer()
+Zombie()
 ubermap = Map(screenwidth, screenheight)
+
 
 def drawGUI():
     pygame.draw.rect(screen, (0, 0, 0), (width / 10, height / 10 * 9, width / 10 * 8, height / 20))
@@ -425,7 +453,8 @@ def drawGUI():
     if player.mag / player.mag_size < 0.1:
         string = "Low Ammo!!!"
         text = pygame.font.Font.render(font, string, True, (255, 50, 50))
-        screen.blit(text, (width / 2 - font.size(string)[0] / 2, height / 9 * 8 + - font.size(string)[1] / 2))
+        screen.blit(text, (width / 2 - font.size(string)[0] / 2, height / 9 * 7.5 + - font.size(string)[1] / 2))
+
 
 while run:
     if not channels[0].get_busy():
@@ -456,8 +485,11 @@ while run:
                 pass
     if pg.mouse.get_pressed()[0]:
         fireanimchange = True
+    for zombie in zombies:
+        zombie.move()
     player.move()
-    player.shoot()
+    if pg.mouse.get_pressed()[0] == 1:
+        player.shoot()
     #getting keyed input
     keycheck = pg.key.get_pressed()
 
