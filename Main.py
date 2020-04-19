@@ -10,6 +10,7 @@ pg = pygame
 pg.init()
 pg.display.init()
 pg.mixer.init()
+font = pygame.font.Font('freesansbold.ttf', 30)
 channels = [pg.mixer.Channel(0), pg.mixer.Channel(1), pg.mixer.Channel(2)]
 clock = pygame.time.Clock()
 song = pg.mixer.Sound('music.wav')
@@ -99,6 +100,13 @@ class MainPlayer(Player):
         super().__init__(cords=[width / 2, height / 2])
         self.delay = pew.get_length()
         self.lastShot = -self.delay
+        self.reload_start = self.lastShot
+        self.max_ammo = 100
+        self.mag_size = 11
+        self.mag = self.mag_size
+        self.reload = 5
+        self.ammo = self.max_ammo
+        self.reloading = False
 
     def move(self, delta=[0, 0]):
         self.delta = [0, 0]
@@ -106,29 +114,6 @@ class MainPlayer(Player):
             self.delta = delta
         for key in keys:
             self.handleKeyDown(key)
-        try:
-            tiles = map.tiles
-            # Handle X cords
-            cords = tiles[0][0].cords
-            if cords[0] - self.delta[0] > -tile_size * map.offscreen / 2:
-                map.build_left()
-                dist[0] -= 1
-            cords = tiles[-1][-1].cords
-            if cords[0] - self.delta[0] < width + tile_size * map.offscreen / 2:
-                map.build_right()
-                dist[0] += 1
-
-            # Handle Y cords
-            cords = tiles[0][0].cords
-            if cords[1] - self.delta[1] > -tile_size * map.offscreen / 2:
-                map.build_up()
-                dist[1] -= 1
-            cords = tiles[-1][-1].cords
-            if cords[1] - self.delta[1] < height + tile_size * map.offscreen / 2:
-                map.build_down()
-                dist[1] += 1
-        except AttributeError:
-            pass
         global drawn_objects
         for object in drawn_objects:
             object.cords = [object.cords[0] - self.delta[0], object.cords[1] - self.delta[1]]
@@ -137,16 +122,6 @@ class MainPlayer(Player):
                 object.y -= self.delta[1]
             except AttributeError:
                 pass
-
-        '''
-        cords = tiles[0][0].cords
-        cords = [cords[0] + (width / 2 - self.cords[0]), cords[1] + (height / 2 - self.cords[1])]
-        row = int(cords[0] / tile_size * -1 + width / tile_size / 2)
-        col = int(cords[1] / tile_size * -1 + height / tile_size / 2)
-
-        with open("C:\\Users\\Sean\\PycharmProjects\\2dTile\\Updates", 'w') as f:
-            f.write(baseURL + "Players/Update/" + str(row) + "/" + str(col) + "/" + str(playerIndex))
-        '''
 
     def handleKeyDown(self, key):
         key = chr(key)
@@ -160,10 +135,23 @@ class MainPlayer(Player):
             self.delta[0] = self.speed
         if key == ' ':
             self.shoot()
+        if key == 'r' and self.mag != self.mag_size:
+            self.reload_start = time.time()
+            self.reloading = True
 
     def shoot(self):
+        print(self.ammo)
         if time.time() - self.lastShot < self.delay or pg.mouse.get_pressed()[0] != 1:
             return
+        if time.time() - self.reload_start >= self.delay and self.reloading:
+            self.reloading = False
+            self.mag = self.mag_size
+
+        if self.mag == 0:
+            return
+
+        self.mag -= 1
+        self.ammo -= 1
         self.lastShot = time.time()
         xy = pg.mouse.get_pos()
         a = self.angle
@@ -189,18 +177,21 @@ class MainPlayer(Player):
 
 class Bullet(drawnObject):
 
-    def __init__(self, coming, going, speed=1, size=5):
+    def __init__(self, coming, going, speed=1, size=7):
         super().__init__(cords=coming)
         self.speed = speed
         self.cords = coming.copy()
         self.size = size
+        self.range = 1000
         self.delta = [going[0] - coming[0], going[1] - coming[1]]
         ratio = (self.delta[0] ** 2 + self.delta[1] ** 2) ** 0.5 / 25
         self.delta = [self.delta[0] * self.speed / ratio, self.delta[1] * self.speed / ratio]
 
     def draw(self):
         self.cords = [self.cords[0] + self.delta[0], self.cords[1] + self.delta[1]]
-        pygame.draw.circle(screen, (0, 0, 0), [int(self.cords[0]), int(self.cords[1])], self.size)
+        if ((player.cords[0] - self.cords[0]) ** 2 + (player.cords[1] - self.cords[1]) ** 2) ** 0.5 > self.range:
+            drawn_objects.remove(self)
+        pygame.draw.circle(screen, (75, 75, 75), [int(self.cords[0]), int(self.cords[1])], self.size)
 
 
 class Car(drawnObject):
@@ -471,6 +462,10 @@ def drawGUI():
     pygame.draw.rect(screen, (0, 0, 0), (width / 10, height / 10 * 9, width / 10 * 8, height / 20))
     pygame.draw.rect(screen, (200, 75, 75),
                      (width / 10, height / 10 * 9, width / 10 * 8 * player.health / player.max_health, height / 20))
+    if player.mag / player.mag_size < 0.1:
+        string = "Low Ammo!!!"
+        text = pygame.font.Font.render(font, string, True, (255, 50, 50))
+        screen.blit(text, (width / 2 - font.size(string)[0] / 2, height / 9 * 8 + - font.size(string)[1] / 2))
 
 class Button:
 
