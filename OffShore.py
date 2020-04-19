@@ -8,14 +8,25 @@ pg = pygame
 
 pg.init()
 pg.display.init()
+pg.mixer.init()
+channels = [pg.mixer.Channel(0), pg.mixer.Channel(1), pg.mixer.Channel(2)]
+clock = pygame.time.Clock()
+song = pg.mixer.Sound('music.wav')
+pew = pg.mixer.Sound('pew.mp3.wav')
+vroom = pg.mixer.Sound('car_sound.wav')
+channels[0].set_volume(0.01)
 
 screenwidth = 1920
 screenheight = 1080
 
+pygame.font.init()
+
+font = pg.font.Font("arial.ttf", 18)
+
 screen = pg.display.set_mode((screenwidth, screenheight))
 
 carimg = pygame.transform.scale(pg.image.load("Car.png"), (128, 64))
-tileimg = pg.transform.scale(pg.image.load("BG.png"), (800, 800))
+tileimg = pygame.transform.scale(pg.image.load("BG.png"), (800, 800))
 
 run = True
 inputlatch = False
@@ -39,112 +50,12 @@ class drawnObject:
         pass
 
 
-class Tile(drawnObject):
-
-    def __init__(self, x, y, tile_size):
-        super().__init__(layer=0)
-        self.cords = [x, y]
-        self.size = tile_size
-        self.type = None
-        self.chance = 15
-        self.item = self.pickItem()
-
-    def pickItem(self):
-        return None
-
-    def draw(self):
-        pass
-
-    def use(self):
-        return "N"
-
-
-class Road(Tile):
-
-    def __init__(self, x, y, direction=0):
-        super().__init__(x, y, tile_size)
-        self.direction = direction
-        self.color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-
-    def draw(self):
-        return
-        pygame.draw.rect(screen, self.color,
-                         (self.cords[0] - self.size / 2, self.cords[1] - self.size / 2, self.size, self.size))
-        pygame.draw.rect(screen, (0, 0, 0),
-                         (self.cords[0] - self.size / 2, self.cords[1] - self.size / 2, self.size, self.size), 2)
-
-    def use(self):
-        self.color = (0, 0, 0)
-        return "N"
-
-    def pickItem(self):
-        return None
-        for item in items:
-            if random.randint(0, 100) < self.chance:
-                return item()
-
-
-class TileMap:
-
-    def __init__(self, size):
-        self.tiles = []
-        self.tile_size = tile_size
-        r = int(size / 2)
-        self.tiles.append([Road(width / 2, height / 2, tile_size)])
-        self.offscreen = 50
-        while self.tiles[0][0].cords[0] >= -tile_size * self.offscreen / 2:
-            self.build_left(e=True)
-        while self.tiles[-1][-1].cords[0] <= width + tile_size * self.offscreen / 2:
-            self.build_right(e=True)
-        while self.tiles[0][0].cords[1] >= -tile_size * self.offscreen / 2:
-            self.build_up(e=True)
-        while self.tiles[-1][-1].cords[1] <= height + tile_size * self.offscreen / 2:
-            self.build_down(e=True)
-
-    def build_left(self, e=False):
-        for index, row in enumerate(self.tiles):
-            row.insert(0, Road(row[0].cords[0] - self.tile_size, row[0].cords[1]))
-            if not e:
-                del row[-1]
-
-    def build_right(self, e=False):
-        for index, row in enumerate(self.tiles):
-            row.insert(len(row), Road(row[-1].cords[0] + self.tile_size, row[-1].cords[1]))
-            if not e:
-                del row[0]
-
-    def build_up(self, e=False):
-        new_row = []
-        for tile in self.tiles[0]:
-            new_row.append(Road(tile.cords[0], tile.cords[1] - self.tile_size))
-        if not e:
-            del self.tiles[-1]
-        self.tiles.insert(0, new_row)
-
-    def build_down(self, e=False):
-        new_row = []
-        for tile in self.tiles[-1]:
-            new_row.append(Road(tile.cords[0], tile.cords[1] + self.tile_size))
-        if not e:
-            del self.tiles[0]
-        self.tiles.insert(len(self.tiles), new_row)
-
-    def print(self):
-        string = ""
-        for row in self.tiles:
-            new_row = ""
-            for tile in row:
-                new_row += str(tile.cords[0]) + ":" + str(tile.cords[1]) + " "
-            string += new_row + "\n"
-        print(string)
-
-
 class Player(drawnObject):
 
     def __init__(self, cords):
         super().__init__()
         self.cords = cords
-        self.speed = 20
+        self.speed = 1.5
         self.index = 0
         self.max_health = 100
         self.health = self.max_health
@@ -155,6 +66,7 @@ class Player(drawnObject):
         self.bullets = []
         self.angle = 0
         self.find_angle()
+        self.inCar = False
 
     def find_angle(self):
         pos = pg.mouse.get_pos()
@@ -170,6 +82,11 @@ class Player(drawnObject):
             self.dead = True
 
     def draw(self):
+        if self.inCar:
+            if not channels[2].get_busy():
+                channels[2].play(vroom)
+            return
+        #  r = (self.cords[0] - self.size / 2, self.cords[1] - self.size / 2, self.size, self.size)
         r = (width / 2 - self.size / 2, height / 2 - self.size / 2, self.size, self.size)
         self.find_angle()
         screen.blit(pygame.transform.rotozoom(self.skin, self.angle, 1), r)
@@ -179,7 +96,7 @@ class MainPlayer(Player):
 
     def __init__(self):
         super().__init__(cords=[width / 2, height / 2])
-        self.delay = 0.2
+        self.delay = pew.get_length()
         self.lastShot = -self.delay
 
     def move(self, delta=[0, 0]):
@@ -188,30 +105,37 @@ class MainPlayer(Player):
             self.delta = delta
         for key in keys:
             self.handleKeyDown(key)
-        tiles = map.tiles
-        # Handle X cords
-        cords = tiles[0][0].cords
-        if cords[0] - self.delta[0] > -tile_size * map.offscreen / 2:
-            map.build_left()
-            dist[0] -= 1
-        cords = tiles[-1][-1].cords
-        if cords[0] - self.delta[0] < width + tile_size * map.offscreen / 2:
-            map.build_right()
-            dist[0] += 1
+        try:
+            tiles = map.tiles
+            # Handle X cords
+            cords = tiles[0][0].cords
+            if cords[0] - self.delta[0] > -tile_size * map.offscreen / 2:
+                map.build_left()
+                dist[0] -= 1
+            cords = tiles[-1][-1].cords
+            if cords[0] - self.delta[0] < width + tile_size * map.offscreen / 2:
+                map.build_right()
+                dist[0] += 1
 
-        # Handle Y cords
-        cords = tiles[0][0].cords
-        if cords[1] - self.delta[1] > -tile_size * map.offscreen / 2:
-            map.build_up()
-            dist[1] -= 1
-        cords = tiles[-1][-1].cords
-        if cords[1] - self.delta[1] < height + tile_size * map.offscreen / 2:
-            map.build_down()
-            dist[1] += 1
-
+            # Handle Y cords
+            cords = tiles[0][0].cords
+            if cords[1] - self.delta[1] > -tile_size * map.offscreen / 2:
+                map.build_up()
+                dist[1] -= 1
+            cords = tiles[-1][-1].cords
+            if cords[1] - self.delta[1] < height + tile_size * map.offscreen / 2:
+                map.build_down()
+                dist[1] += 1
+        except AttributeError:
+            pass
         global drawn_objects
         for object in drawn_objects:
             object.cords = [object.cords[0] - self.delta[0], object.cords[1] - self.delta[1]]
+            try:
+                object.x -= self.delta[0]
+                object.y -= self.delta[1]
+            except AttributeError:
+                pass
 
         '''
         cords = tiles[0][0].cords
@@ -237,7 +161,7 @@ class MainPlayer(Player):
             self.shoot()
 
     def shoot(self):
-        if time.time() - self.lastShot < self.delay:
+        if time.time() - self.lastShot < self.delay or pg.mouse.get_pressed()[0] != 1:
             return
         self.lastShot = time.time()
         xy = pg.mouse.get_pos()
@@ -245,6 +169,8 @@ class MainPlayer(Player):
         s = math.sin(math.radians(a))
         c = math.cos(math.radians(a))
         self.bullets.append(Bullet([width / 2 + 2 * s, height / 2 - 7 * c], xy))
+        if not channels[1].get_busy():
+            channels[1].play(pew)
 
     def useTile(self):
         tiles = map.tiles
@@ -258,9 +184,6 @@ class MainPlayer(Player):
             self.health += eval(output[:-1])
             if self.health > self.max_health:
                 self.health = 100
-
-    def drawGUI(self):
-        pygame.draw.rect((width / 10, height / 10 * 9, width / 10 * 8, height / 5))
 
 
 class Bullet(drawnObject):
@@ -276,7 +199,7 @@ class Bullet(drawnObject):
 
     def draw(self):
         self.cords = [self.cords[0] + self.delta[0], self.cords[1] + self.delta[1]]
-        pygame.draw.circle(screen, (255, 255, 255), [int(self.cords[0]), int(self.cords[1])], self.size)
+        pygame.draw.circle(screen, (0, 0, 0), [int(self.cords[0]), int(self.cords[1])], self.size)
 
 
 class Car(drawnObject):
@@ -354,6 +277,19 @@ class Hitbox:
              or (self.actdownx > self.passivex and self.actdownx < self.pasfarx and
                  self.actdowny > self.passivey and self.actdowny < self.pasfary)
              or (self.actfarx > self.passivex and self.actfarx < self.pasfarx and
+                 self.actfary > self.passivey and self.actfary < self.pasfary))):
+            return True
+        else:
+            return False
+
+    def bulletHit(self):
+        if (((self.activex > self.passivex and self.activex < self.pasfarx and
+              self.activey > self.passivey and self.activey < self.pasfary)
+             or (self.actrightx > self.passivex and self.actrightx < self.pasfarx and
+                 self.actrighty > self.passivey and self.actrighty < self.pasfary)
+             or (self.actdownx > self.passivex and self.actdownx < self.pasfarx and
+                 self.actdowny > self.passivey and self.actdowny < self.pasfary)
+             or (self.actfarx > self.passivex and self.actfarx < self.pasfarx and
                  self.actfary > self.passivey and self.actfary < self.pasfary))) and self.parent.blit:
             return True
         else:
@@ -423,7 +359,7 @@ zoneheight = 800
 
 class Zone(drawnObject):
     def __init__(self, x, y):
-        super().__init__(cords=[x,y])
+        super().__init__(cords=[x, y])
         self.x = x
         self.y = y
         self.img = None
@@ -454,6 +390,11 @@ class Zone(drawnObject):
         self.mailbox.changeActive(player.cords[0], player.cords[1])
         self.house.changeActive(player.cords[0], player.cords[1])
         self.zonehitbox.changeActive(player.cords[0], player.cords[1])
+        self.recbin.changePassive(self.x, self.y)
+        self.garbin.changePassive(self.x, self.y)
+        self.mailbox.changePassive(self.x, self.y)
+        self.house.changePassive(self.x, self.y)
+        self.zonehitbox.changePassive(self.x, self.y)
 
     def setContents(self, recbin, garbin, mailbox):
         self.recbincont = recbin
@@ -479,42 +420,109 @@ class Map:
         self.startingpointy = (screenheight - zoneheight) / 2
         self.zonesx = []
         self.zonesy = []
-        self.zonediffx = self.startingpointx - (self.mapwidth / 2)
-        self.zonediffy = self.startingpointy - (self.mapheight / 2)
+        self.zonediffx = self.startingpointx - (self.sizew / 2)
+        self.zonediffy = self.startingpointy - (self.sizeh / 2)
         for zone in range(self.mapwidth):
             self.zonesx.append([])
             for zones in range(self.mapheight):
-                self.zonesx[zone].append(Zone(self.startingpointx + self.zonediffx, self.startingpointy + self.zonediffy))
+                self.zonesx[zone].append(
+                    Zone(self.startingpointx + self.zonediffx, self.startingpointy + self.zonediffy))
                 self.zonediffy += zoneheight
-            self.zonediffy = 0
+            self.zonediffy = self.startingpointy - (self.sizeh / 2)
             self.zonediffx += zonewidth
 
-    #def setZone(self):
-    #    self.zonesx[(self.mapwidth / 2) - 1][(self.mapheight / 2) - 1].zonehitbox.changeActive(player.cors[0],
-    #                                                                                           player.cords[1])
-    #    if not self.zonesx[(self.mapwidth / 2) - 1][(self.mapheight / 2) - 1].zonehitbox.hit():
-    #        for zones in zonesx:
-    #            for zone in zones:
-    #                if zone.zonehitbox.hit():
+    def setZone(self):
+        self.zonesx[(self.mapwidth // 2)][(self.mapheight // 2)].zonehitbox.changeActive(player.cords[0],
+                                                                                         player.cords[1])
+        if not self.zonesx[(self.mapwidth // 2)][(self.mapheight // 2)].zonehitbox.hit():
+            print("uh oh")
+            for zones in self.zonesx:
+                for zone in zones:
+                    if zone.zonehitbox.hit():
+                        if zones.index(zone) < self.mapheight / 2:
+                            pass
+                        if zones.index(zone) > self.mapheight / 2:
+                            pass
+                        if self.zonesx.index(zones) < self.mapwidth / 2:
+                            print(self.zonesx.index(zones), self.mapwidth / 2)
+                            self.zonesx.remove(self.zonesx[len(self.zonesx) - 1])
+                            self.zonesx.insert(0, [])
+                            for zone in range(self.mapheight):
+                                self.zonesx[0].append(Zone(self.zonesx[1][zone].x - zonewidth,
+                                                           self.zonesx[1][zone].y))
+                        if self.zonesx.index(zones) > self.mapwidth / 2:
+                            self.zonesx.remove(0)
+                            self.zonesx.append([])
+                            for zone in range(self.mapheight):
+                                self.zonesx[len(self.zonesx) - 1].append(
+                                    Zone(self.zonesx[len(self.zonesx) - 2][zone].x - zonewidth,
+                                         self.zonesx[len(self.zonesx) - 2][zone].y))
 
     def draw(self):
         for zones in self.zonesx:
             for zone in zones:
-                print('yeet')
                 screen.blit(tileimg, (zone.cords[0], zone.cords[1]))
 
-tile_size = int(height / 15)
-map = TileMap(1)  # (width / tile_size * 2)
+
 car = Car((width / 2), (height / 2))
 player = MainPlayer()
-
 ubermap = Map(screenwidth, screenheight)
 
 
-while run:
-    screen.fill((255, 255, 255))
-    ubermap.draw()
+def drawGUI():
+    pygame.draw.rect(screen, (0, 0, 0), (width / 10, height / 10 * 9, width / 10 * 8, height / 20))
+    pygame.draw.rect(screen, (200, 75, 75),
+                     (width / 10, height / 10 * 9, width / 10 * 8 * player.health / player.max_health, height / 20))
 
+
+class Button:
+
+    def __init__(self, x, y, active, inactive, font, text):
+        self.screen = screen
+        self.x = x
+        self.y = y
+        self.hitbox = Hitbox(0, 0, 0, 0, x, y, 256, 64, None)
+        self.active = active
+        self.inactive = inactive
+        self.blit = True
+        self.font = font
+        self.text = text
+
+    def button(self):
+
+        if self.hitbox.hit():
+            self.screen.blit(self.active, (self.x, self.y))
+        else:
+            self.screen.blit(self.inactive, (self.x, self.y))
+        self.screen.blit(self.font.render(self.text, True, (255, 255, 255)), (self.x, self.y))
+
+
+startimg2 = pg.transform.scale(pg.image.load("Menus1.png"), (256, 64))
+startimg1 = pg.transform.scale(pg.image.load("Menus2.png"), (256, 64))
+
+startbutton = Button(0, 0, startimg1, startimg2, font, "Start!")
+
+start = True
+while run:
+
+    while start:
+        startbutton.hitbox.changeActive(pg.mouse.get_pos()[0], pg.mouse.get_pos()[1])
+        pg.event.get()
+        screen.fill((255, 255, 255))
+        startbutton.button()
+        pygame.display.update()
+        if startbutton.hitbox.hit() and pg.mouse.get_pressed()[0]:
+            start = False
+
+    for zones in ubermap.zonesx:
+        for zone in zones:
+            zone.setHitboxes()
+
+    if not channels[0].get_busy():
+        channels[0].play(song)
+    screen.fill((255, 255, 255))
+    ubermap.setZone()
+    ubermap.draw()
 
     pressedw = False
     presseda = False
@@ -540,6 +548,7 @@ while run:
     if pg.mouse.get_pressed()[0]:
         fireanimchange = True
     player.move()
+    player.shoot()
     # getting keyed input
     keycheck = pg.key.get_pressed()
 
@@ -568,6 +577,6 @@ while run:
         cw = False
 
     car.move(posneg, cw, ccw)
-    car.draw()
-
+    drawGUI()
     pg.display.update()
+    clock.tick(60)

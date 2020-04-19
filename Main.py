@@ -21,6 +21,10 @@ channels[0].set_volume(0.001)
 screenwidth = 1920
 screenheight = 1080
 
+pygame.font.init()
+
+font = pg.font.Font("arial.ttf", 18)
+
 screen = pg.display.set_mode((screenwidth, screenheight))
 
 carimg = pygame.transform.scale(pg.image.load("Car.png"), (128, 64))
@@ -293,6 +297,19 @@ class Hitbox:
             or (self.actdownx > self.passivex and self.actdownx < self.pasfarx and
                 self.actdowny > self.passivey and self.actdowny < self.pasfary)
             or (self.actfarx > self.passivex and self.actfarx < self.pasfarx and
+                self.actfary > self.passivey and self.actfary < self.pasfary))):
+            return True
+        else:
+            return False
+
+    def bulletHit(self):
+        if (((self.activex > self.passivex and self.activex < self.pasfarx and
+             self.activey > self.passivey and self.activey < self.pasfary)
+            or (self.actrightx > self.passivex and self.actrightx < self.pasfarx and
+                self.actrighty > self.passivey and self.actrighty < self.pasfary)
+            or (self.actdownx > self.passivex and self.actdownx < self.pasfarx and
+                self.actdowny > self.passivey and self.actdowny < self.pasfary)
+            or (self.actfarx > self.passivex and self.actfarx < self.pasfarx and
                 self.actfary > self.passivey and self.actfary < self.pasfary))) and self.parent.blit:
             return True
         else:
@@ -391,6 +408,11 @@ class Zone(drawnObject):
         self.mailbox.changeActive(player.cords[0], player.cords[1])
         self.house.changeActive(player.cords[0], player.cords[1])
         self.zonehitbox.changeActive(player.cords[0], player.cords[1])
+        self.recbin.changePassive(self.x, self.y)
+        self.garbin.changePassive(self.x, self.y)
+        self.mailbox.changePassive(self.x, self.y)
+        self.house.changePassive(self.x, self.y)
+        self.zonehitbox.changePassive(self.x, self.y)
 
     def setContents(self, recbin, garbin, mailbox):
         self.recbincont = recbin
@@ -426,13 +448,31 @@ class Map:
             self.zonediffy = self.startingpointy - (self.sizeh / 2)
             self.zonediffx += zonewidth
 
-    #def setZone(self):
-    #    self.zonesx[(self.mapwidth / 2) - 1][(self.mapheight / 2) - 1].zonehitbox.changeActive(player.cors[0],
-    #                                                                                           player.cords[1])
-    #    if not self.zonesx[(self.mapwidth / 2) - 1][(self.mapheight / 2) - 1].zonehitbox.hit():
-    #        for zones in zonesx:
-    #            for zone in zones:
-    #                if zone.zonehitbox.hit():
+    def setZone(self):
+        self.zonesx[(self.mapwidth // 2)][(self.mapheight // 2)].zonehitbox.changeActive(player.cords[0],
+                                                                                               player.cords[1])
+        if not self.zonesx[(self.mapwidth // 2)][(self.mapheight // 2)].zonehitbox.hit():
+            print("uh oh")
+            for zones in self.zonesx:
+                for zone in zones:
+                    if zone.zonehitbox.hit():
+                        if zones.index(zone) < self.mapheight/2:
+                            pass
+                        if zones.index(zone) > self.mapheight/2:
+                            pass
+                        if self.zonesx.index(zones) < self.mapwidth/2:
+                            print(self.zonesx.index(zones), self.mapwidth/2)
+                            self.zonesx.remove(self.zonesx[len(self.zonesx) - 1])
+                            self.zonesx.insert(0, [])
+                            for zone in range(self.mapheight):
+                                self.zonesx[0].append(Zone(self.zonesx[1][zone].x - zonewidth,
+                                                      self.zonesx[1][zone].y))
+                        if self.zonesx.index(zones) > self.mapwidth/2:
+                            self.zonesx.remove(0)
+                            self.zonesx.append([])
+                            for zone in range(self.mapheight):
+                                self.zonesx[len(self.zonesx) - 1].append(Zone(self.zonesx[len(self.zonesx) - 2][zone].x - zonewidth,
+                                                                         self.zonesx[len(self.zonesx) - 2][zone].y))
 
     def draw(self):
         for zones in self.zonesx:
@@ -456,10 +496,52 @@ def drawGUI():
         screen.blit(text, (width / 2 - font.size(string)[0] / 2, height / 9 * 7.5 + - font.size(string)[1] / 2))
 
 
+class Button:
+
+    def __init__(self, x, y, active, inactive, font, text):
+        self.screen = screen
+        self.x = x
+        self.y = y
+        self.hitbox = Hitbox(0, 0, 0, 0, x, y, 256, 64, None)
+        self.active = active
+        self.inactive = inactive
+        self.blit = True
+        self.font = font
+        self.text = text
+
+    def button(self):
+
+        if self.hitbox.hit():
+            self.screen.blit(self.active, (self.x, self.y))
+        else:
+            self.screen.blit(self.inactive, (self.x, self.y))
+        self.screen.blit(self.font.render(self.text, True, (255, 255, 255)), (self.x, self.y))
+
+startimg2 = pg.transform.scale(pg.image.load("Menus1.png"), (256, 64))
+startimg1 = pg.transform.scale(pg.image.load("Menus2.png"), (256, 64))
+
+startbutton = Button(0, 0, startimg1, startimg2, font, "Start!")
+
+start = True
 while run:
+
+    while start:
+        startbutton.hitbox.changeActive(pg.mouse.get_pos()[0], pg.mouse.get_pos()[1])
+        pg.event.get()
+        screen.fill((255, 255, 255))
+        startbutton.button()
+        pygame.display.update()
+        if startbutton.hitbox.hit() and pg.mouse.get_pressed()[0]:
+            start = False
+
+    for zones in ubermap.zonesx:
+        for zone in zones:
+            zone.setHitboxes()
+
     if not channels[0].get_busy():
         channels[0].play(song)
     screen.fill((255, 255, 255))
+    ubermap.setZone()
     ubermap.draw()
 
     pressedw = False
